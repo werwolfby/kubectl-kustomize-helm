@@ -4,6 +4,7 @@ ARG TARGETOS
 ARG TARGETARCH
 ARG KUBECTL_VERSION
 ARG KUSTOMIZE_VERSION
+ARG HELM_VERSION
 
 WORKDIR /downloads
 
@@ -15,6 +16,11 @@ RUN set -ex; \
     curl -fL https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize/v${KUSTOMIZE_VERSION}/kustomize_v${KUSTOMIZE_VERSION}_${TARGETOS}_${TARGETARCH}.tar.gz | tar xz && \
     chmod +x kustomize
 
+RUN set -ex; \
+    curl -fL https://get.helm.sh/helm-v${HELM_VERSION}-${TARGETOS}-${TARGETARCH}.tar.gz | tar xz && \
+    mv ${TARGETOS}-${TARGETARCH}/helm helm && \
+    chmod +x helm
+
 
 # Runtime
 FROM alpine:3.16.0 AS runtime
@@ -23,9 +29,10 @@ LABEL maintainer="LINE Open Source <dl_oss_dev@linecorp.com>"
 
 COPY --from=downloader /downloads/kubectl /usr/local/bin/kubectl
 COPY --from=downloader /downloads/kustomize /usr/local/bin/kustomize
+COPY --from=downloader /downloads/helm /usr/local/bin/helm
 
 
 # Test
 FROM runtime AS test
 
-RUN set -ex; kubectl && kustomize
+RUN set -ex; kubectl && kustomize && helm

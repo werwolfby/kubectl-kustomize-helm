@@ -31,3 +31,12 @@ CMD [ \
     jq -r 'first(.[] | select(.name | startswith(\"kustomize/\"))) | .name' | \
     sed -e 's/\\kustomize\\/v\\(.*\\)$/\\1/'" \
 ]
+
+
+FROM base AS latest-helm-version
+
+CMD [ \
+    "curl -fs https://api.github.com/repos/helm/helm/releases/latest | \
+    jq -r '.tag_name' | \
+    sed -e 's/\\v\\(.*\\)$/\\1/'" \
+]
