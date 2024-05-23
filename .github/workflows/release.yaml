@@ -11,6 +11,7 @@ jobs:
       kubectl-version: ${{ steps.kubectl.outputs.version }}
       kustomize-version: ${{ steps.kustomize.outputs.version }}
       helm-version: ${{ steps.helm.outputs.version }}
+      jsonnet-version: ${{ steps.jsonnet.outputs.version }}
       image-exists: ${{ steps.image-existence.outputs.exists }}
       image-tag: ${{ steps.image-existence.outputs.tag }}
     steps:
@@ -28,7 +29,7 @@ jobs:
         run: |
           docker build . \
             -f metadata.Dockerfile \
-            -t "${REPO_OWNER}/kubectl-kustomize-helm:kubectl-version" \
+            -t "${REPO_OWNER}/kubectl-kustomize-helm-jsonnet:kubectl-version" \
             --target latest-kubectl-version
 
       - name: Check latest kubectl version
@@ -36,7 +37,7 @@ jobs:
         env:
           REPO_OWNER: ${{ github.repository_owner }}
         run: |
-          if version=$(docker run --rm ${REPO_OWNER}/kubectl-kustomize-helm:kubectl-version); then
+          if version=$(docker run --rm ${REPO_OWNER}/kubectl-kustomize-helm-jsonnet:kubectl-version); then
             echo "version=$version" >> $GITHUB_OUTPUT
           else
             exit 1
@@ -48,7 +49,7 @@ jobs:
         run: |
           docker build . \
             -f metadata.Dockerfile \
-            -t "${REPO_OWNER}/kubectl-kustomize-helm:kustomize-version" \
+            -t "${REPO_OWNER}/kubectl-kustomize-helm-jsonnet:kustomize-version" \
             --target latest-kustomize-version
 
       - name: Check latest kustomize version
@@ -56,7 +57,7 @@ jobs:
         env:
           REPO_OWNER: ${{ github.repository_owner }}
         run: |
-          if version=$(docker run --rm ${REPO_OWNER}/kubectl-kustomize-helm:kustomize-version); then
+          if version=$(docker run --rm ${REPO_OWNER}/kubectl-kustomize-helm-jsonnet:kustomize-version); then
             echo "version=$version" >> $GITHUB_OUTPUT
           else
             exit 1
@@ -68,7 +69,7 @@ jobs:
         run: |
           docker build . \
             -f metadata.Dockerfile \
-            -t "${REPO_OWNER}/kubectl-kustomize-helm:helm-version" \
+            -t "${REPO_OWNER}/kubectl-kustomize-helm-jsonnet:helm-version" \
             --target latest-helm-version
 
       - name: Check latest helm version
@@ -76,7 +77,27 @@ jobs:
         env:
           REPO_OWNER: ${{ github.repository_owner }}
         run: |
-          if version=$(docker run --rm ${REPO_OWNER}/kubectl-kustomize-helm:helm-version); then
+          if version=$(docker run --rm ${REPO_OWNER}/kubectl-kustomize-helm-jsonnet:helm-version); then
+            echo "version=$version" >> $GITHUB_OUTPUT
+          else
+            exit 1
+          fi
+    
+      - name: Prepare checking latest jsonnet release
+        env:
+          REPO_OWNER: ${{ github.repository_owner }}
+        run: |
+          docker build . \
+            -f metadata.Dockerfile \
+            -t "${REPO_OWNER}/kubectl-kustomize-helm-jsonnet:jsonnet-version" \
+            --target latest-jsonnet-version
+
+      - name: Check latest jsonnet version
+        id: jsonnet
+        env:
+          REPO_OWNER: ${{ github.repository_owner }}
+        run: |
+          if version=$(docker run --rm ${REPO_OWNER}/kubectl-kustomize-helm-jsonnet:jsonnet-version); then
             echo "version=$version" >> $GITHUB_OUTPUT
           else
             exit 1
@@ -85,12 +106,12 @@ jobs:
       - name: Check image exists on registry
         id: image-existence
         env:
-          IMAGE_TAG: ${{ format('{0}-{1}-{2}', steps.kubectl.outputs.version, steps.kustomize.outputs.version, steps.helm.outputs.version) }}
+          IMAGE_TAG: ${{ format('{0}-{1}-{2}-{3}', steps.kubectl.outputs.version, steps.kustomize.outputs.version, steps.helm.outputs.version, steps.jsonnet.outputs.version) }}
           REPO_OWNER: ${{ github.repository_owner }}
         shell: bash +e {0}
         run: |
           echo "tag=$IMAGE_TAG" >> $GITHUB_OUTPUT
-          result="$(DOCKER_CLI_EXPERIMENTAL=enabled docker manifest inspect ${REPO_OWNER}/kubectl-kustomize-helm:${IMAGE_TAG} 2>&1)"
+          result="$(DOCKER_CLI_EXPERIMENTAL=enabled docker manifest inspect ${REPO_OWNER}/kubectl-kustomize-helm-jsonnet:${IMAGE_TAG} 2>&1)"
           if [[ $? -eq 0 ]]; then
             echo "exists=true" >> $GITHUB_OUTPUT
           elif [[ $result == *"no such manifest"* ]]; then
@@ -124,7 +145,7 @@ jobs:
         uses: docker/build-push-action@v4
         with:
           context: .
-          tags: ${{ github.repository_owner }}/kubectl-kustomize-helm:test
+          tags: ${{ github.repository_owner }}/kubectl-kustomize-helm-jsonnet:test
           target: test
           platforms: |
             linux/amd64
@@ -133,6 +154,7 @@ jobs:
             KUBECTL_VERSION=${{ needs.fetch-metadata.outputs.kubectl-version }}
             KUSTOMIZE_VERSION=${{ needs.fetch-metadata.outputs.kustomize-version }}
             HELM_VERSION=${{ needs.fetch-metadata.outputs.helm-version }}
+            JSONNET_VERSION=${{ needs.fetch-metadata.outputs.jsonnet-version }}
           push: false
 
       - name: Push image
@@ -141,8 +163,8 @@ jobs:
         with:
           context: .
           tags: |
-            ${{ github.repository_owner }}/kubectl-kustomize-helm:${{ needs.fetch-metadata.outputs.image-tag }}
-            ${{ github.repository_owner }}/kubectl-kustomize-helm:latest
+            ${{ github.repository_owner }}/kubectl-kustomize-helm-jsonnet:${{ needs.fetch-metadata.outputs.image-tag }}
+            ${{ github.repository_owner }}/kubectl-kustomize-helm-jsonnet:latest
           target: runtime
           platforms: |
             linux/amd64
@@ -151,4 +173,5 @@ jobs:
             KUBECTL_VERSION=${{ needs.fetch-metadata.outputs.kubectl-version }}
             KUSTOMIZE_VERSION=${{ needs.fetch-metadata.outputs.kustomize-version }}
             HELM_VERSION=${{ needs.fetch-metadata.outputs.helm-version }}
+            JSONNET_VERSION=${{ needs.fetch-metadata.outputs.jsonnet-version }}
           push: true

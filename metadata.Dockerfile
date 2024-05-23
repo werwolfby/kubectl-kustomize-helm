@@ -40,3 +40,11 @@ CMD [ \
     jq -r '.tag_name' | \
     sed -e 's/\\v\\(.*\\)$/\\1/'" \
 ]
+
+FROM base AS latest-jsonnet-version
+
+CMD [ \
+    "curl -fs https://api.github.com/repos/google/go-jsonnet/releases/latest | \
+    jq -r '.tag_name' | \
+    sed -e 's/\\v\\(.*\\)$/\\1/'" \
+]
