@@ -23,13 +23,16 @@ RUN set -ex; \
     chmod +x helm
 
 RUN set -ex; \
-    if [ "$TARGETARCH" = "amd64" ]; then TARGETARCH="x86_64"; fi && \
+    # normalize arch & os
+    if [ "$TARGETARCH" = "amd64" ]; then TARGETARCH=x86_64; fi; \
     TARGETOS=$(echo $TARGETOS | awk '{print toupper(substr($0,1,1))substr($0,2)}'); \
-    curl -fL https://github.com/google/go-jsonnet/releases/download/v${JSONNET_VERSION}/go-jsonnet_${JSONNET_VERSION}_${TARGETOS}_${TARGETARCH}.tar.gz | tar xz && \
-    chmod +x jsonnet && \
-    chmod +x jsonnetfmt && \
-    chmod +x jsonnet-lint && \
-    chmod +x jsonnet-deps
+    # define both possible filenames
+    VERSIONED=go-jsonnet_${JSONNET_VERSION}_${TARGETOS}_${TARGETARCH}.tar.gz; \
+    UNVERSIONED=go-jsonnet_${TARGETOS}_${TARGETARCH}.tar.gz; \
+    BASE_URL=https://github.com/google/go-jsonnet/releases/download/v${JSONNET_VERSION}; \
+    # try versioned first, else unversioned
+    (curl -fL ${BASE_URL}/${VERSIONED} || curl -fL ${BASE_URL}/${UNVERSIONED}) | tar xz; \
+    chmod +x jsonnet jsonnetfmt jsonnet-lint jsonnet-deps
 
 FROM golang:1.22.3-alpine3.19 AS builder
 
